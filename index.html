@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Gigaset Pro — Каталог</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: #000000 !important;
+      background-color: #000000 !important;
+      overflow: hidden !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    #flipbook-container {
+      width: 100vw;
+      height: 100vh;
+      max-width: 100vw;
+      max-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #000000 !important;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    #flipbook {
+      width: 100%;
+      height: 100%;
+      background: #000000 !important;
+    }
+
+    /* Убираем белые фоны от библиотеки */
+    .stf__parent,
+    .stf__wrapper,
+    .stf__block,
+    .stf__item,
+    .stf__outer,
+    .stf__block canvas,
+    .stf__parent canvas,
+    canvas {
+      background: #000000 !important;
+      background-color: #000000 !important;
+    }
+
+    div[class*="stf"] {
+      background-color: #000000 !important;
+    }
+
+    .stf__item.--hard,
+    .stf__item.--hard .stf__hard-page,
+    .stf__item.--left,
+    .stf__item.--right {
+      background: #000000 !important;
+    }
+
+    /* Навигация */
+    .controls {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(12px);
+      padding: 10px 16px;
+      border-radius: 40px;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .controls button {
+      background: rgba(255,255,255,0.12);
+      border: none;
+      color: #fff;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .controls button:hover {
+      background: rgba(255,255,255,0.25);
+    }
+
+    .controls button:disabled {
+      opacity: 0.3;
+      cursor: default;
+    }
+
+    #page-info {
+      color: rgba(255,255,255,0.85);
+      font-size: 14px;
+      min-width: 70px;
+      text-align: center;
+      line-height: 44px;
+      user-select: none;
+    }
+
+    .hint {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
+      z-index: 50;
+      pointer-events: none;
+      transition: opacity 0.5s;
+    }
+
+    @media (max-width: 768px) {
+      .controls {
+        bottom: 16px;
+        padding: 8px 12px;
+        gap: 8px;
+      }
+      .controls button {
+        width: 40px;
+        height: 40px;
+      }
+      .hint {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="hint" id="hint">Листайте страницы мышкой или стрелками ← →</div>
+
+  <div id="flipbook-container">
+    <div id="flipbook"></div>
+  </div>
+
+  <div class="controls">
+    <button id="prev" title="Предыдущая">‹</button>
+    <div id="page-info">1 / 24</div>
+    <button id="next" title="Следующая">›</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+
+  <script>
+    // Оригинальный размер страниц: 1400 × 1980 (соотношение ≈ 0.707)
+    const PAGE_ASPECT = 1400 / 1980; // width / height
+
+    const pages = [];
+    // Чёрная страница слева от обложки
+    pages.push('page-00.png');
+    for (let i = 1; i <= 24; i++) {
+      pages.push(`page-${String(i).padStart(2, '0')}.png`);
+    }
+
+    // Базовые размеры строго в оригинальном соотношении
+    // 700 × 990 = 1400/1980 * 700
+    const baseWidth = 700;
+    const baseHeight = Math.round(baseWidth / PAGE_ASPECT); // 990
+
+    const pageFlip = new St.PageFlip(document.getElementById('flipbook'), {
+      width: baseWidth,
+      height: baseHeight,
+      size: 'stretch',
+      minWidth: 280,
+      maxWidth: 1100,
+      minHeight: 400,
+      maxHeight: 1600,
+      drawShadow: true,
+      flippingTime: 800,
+      usePortrait: true,
+      startPage: 0,
+      autoSize: true,
+      maxShadowOpacity: 0.35,
+      showCover: false,
+      mobileScrollSupport: true,
+      clickEventForward: true,
+      useMouseEvents: true,
+      swipeDistance: 30,
+      showPageCorners: true,
+      disableFlipByClick: false
+    });
+
+    pageFlip.loadFromImages(pages);
+
+    // === ФИКС белого canvas ===
+    // Библиотека делает clear() с fillStyle = "white"
+    const patchCanvasClear = () => {
+      try {
+        if (pageFlip.render && typeof pageFlip.render.clear === 'function' && pageFlip.render.ctx) {
+          pageFlip.render.clear = function () {
+            this.ctx.fillStyle = '#000000';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+          };
+          pageFlip.render.clear();
+          if (typeof pageFlip.update === 'function') pageFlip.update();
+          return true;
+        }
+      } catch (e) {}
+      return false;
+    };
+
+    if (!patchCanvasClear()) {
+      setTimeout(() => {
+        if (!patchCanvasClear()) setTimeout(patchCanvasClear, 400);
+      }, 150);
+    }
+
+    // UI
+    const pageInfo = document.getElementById('page-info');
+    const prevBtn = document.getElementById('prev');
+    const nextBtn = document.getElementById('next');
+
+    function updateUI() {
+      const idx = pageFlip.getCurrentPageIndex();
+      // 0 = чёрная, 1..24 = страницы
+      const displayCurrent = Math.max(1, Math.min(idx, 24));
+      pageInfo.textContent = `${displayCurrent} / 24`;
+      prevBtn.disabled = idx <= 0;
+      nextBtn.disabled = idx >= 24;
+    }
+
+    pageFlip.on('flip', updateUI);
+    pageFlip.on('changeOrientation', updateUI);
+    pageFlip.on('changeState', updateUI);
+
+    prevBtn.addEventListener('click', () => pageFlip.flipPrev());
+    nextBtn.addEventListener('click', () => pageFlip.flipNext());
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') pageFlip.flipPrev();
+      if (e.key === 'ArrowRight') pageFlip.flipNext();
+    });
+
+    setTimeout(() => {
+      const hint = document.getElementById('hint');
+      if (hint) hint.style.opacity = '0';
+    }, 4000);
+
+    setTimeout(updateUI, 400);
+
+    window.addEventListener('resize', () => {
+      pageFlip.update();
+    });
+  </script>
+</body>
+</html>
