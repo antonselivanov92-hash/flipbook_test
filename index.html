@@ -15,17 +15,23 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
+    #stage {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      overflow: hidden;
+      z-index: 1;
+    }
+
     #flipbook-container {
-      width: 100vw;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
       display: flex;
       justify-content: center;
       align-items: center;
-      position: fixed;
-      inset: 0;
       background: #000 !important;
-      overflow: hidden;
-      z-index: 1;
+      transform-origin: center center;
+      will-change: transform;
     }
 
     #flipbook {
@@ -71,19 +77,39 @@
       background: rgba(255,255,255,0.12);
       border: none;
       color: #fff;
-      width: 44px;
       height: 44px;
-      border-radius: 50%;
+      min-width: 44px;
+      padding: 0 14px;
+      border-radius: 22px;
       cursor: pointer;
-      font-size: 18px;
+      font-size: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
+      gap: 6px;
       transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .controls button.round {
+      width: 44px;
+      padding: 0;
+      border-radius: 50%;
+      font-size: 18px;
     }
 
     .controls button:hover { background: rgba(255,255,255,0.25); }
     .controls button:disabled { opacity: 0.3; cursor: default; }
+
+    #exit-fs {
+      display: none;
+      background: rgba(220, 50, 50, 0.55);
+      font-weight: 600;
+    }
+
+    #exit-fs:hover { background: rgba(220, 50, 50, 0.85); }
+    body.is-fs #exit-fs { display: flex; }
+    body.is-fs #toggle-fs { display: none; }
 
     .controls .sep {
       width: 1px;
@@ -115,120 +141,6 @@
       max-width: 90vw;
     }
 
-    #zoom-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      z-index: 1000;
-      background: #000;
-      flex-direction: column;
-    }
-
-    #zoom-overlay.open { display: flex; }
-
-    .zoom-topbar,
-    .zoom-toolbar {
-      flex: 0 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 12px 16px;
-      background: rgba(0,0,0,0.75);
-      backdrop-filter: blur(14px);
-      z-index: 2;
-    }
-
-    .zoom-topbar {
-      justify-content: space-between;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-    }
-
-    .zoom-toolbar { border-top: 1px solid rgba(255,255,255,0.08); }
-
-    .zoom-topbar button,
-    .zoom-toolbar button {
-      background: rgba(255,255,255,0.12);
-      border: none;
-      color: #fff;
-      min-width: 44px;
-      height: 44px;
-      padding: 0 14px;
-      border-radius: 22px;
-      cursor: pointer;
-      font-size: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      transition: background 0.2s;
-      user-select: none;
-      white-space: nowrap;
-    }
-
-    .zoom-topbar button:hover,
-    .zoom-toolbar button:hover { background: rgba(255,255,255,0.25); }
-
-    .zoom-topbar button:disabled,
-    .zoom-toolbar button:disabled { opacity: 0.3; cursor: default; }
-
-    #zoom-close {
-      background: rgba(220, 50, 50, 0.55);
-      font-size: 15px;
-      font-weight: 600;
-    }
-
-    #zoom-close:hover { background: rgba(220, 50, 50, 0.85); }
-
-    #zoom-page-label {
-      color: #fff;
-      font-size: 15px;
-      letter-spacing: 0.02em;
-      user-select: none;
-    }
-
-    #zoom-scale-label {
-      color: rgba(255,255,255,0.7);
-      font-size: 13px;
-      min-width: 48px;
-      text-align: center;
-      user-select: none;
-    }
-
-    #zoom-viewport {
-      flex: 1 1 auto;
-      position: relative;
-      overflow: hidden;
-      cursor: grab;
-      touch-action: none;
-      background: #000;
-    }
-
-    #zoom-viewport.dragging { cursor: grabbing; }
-
-    #zoom-img {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform-origin: center center;
-      max-width: none;
-      user-select: none;
-      -webkit-user-drag: none;
-      pointer-events: none;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.45);
-    }
-
-    .zoom-hint {
-      position: absolute;
-      bottom: 16px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: rgba(255,255,255,0.4);
-      font-size: 12px;
-      pointer-events: none;
-      white-space: nowrap;
-    }
-
     @media (max-width: 768px) {
       .controls {
         bottom: 12px;
@@ -236,58 +148,37 @@
         gap: 6px;
       }
       .controls button {
-        width: 38px;
         height: 38px;
+        min-width: 38px;
+        font-size: 14px;
+        padding: 0 10px;
+      }
+      .controls button.round {
+        width: 38px;
         font-size: 16px;
       }
       #page-info { min-width: 58px; font-size: 13px; line-height: 38px; }
       .hint { display: none; }
-      .zoom-hint { display: none; }
-      .zoom-topbar button,
-      .zoom-toolbar button {
-        min-width: 40px;
-        height: 40px;
-        font-size: 15px;
-        padding: 0 10px;
-      }
     }
   </style>
 </head>
 <body>
 
-  <div class="hint" id="hint">Листайте ← → · лупа — увеличить страницу · ⛶ — на весь экран · Esc — выход</div>
+  <div class="hint" id="hint">Листайте ← → · ⛶ — на весь экран · в полном экране колёсико увеличивает и уменьшает</div>
 
-  <div id="flipbook-container">
-    <div id="flipbook"></div>
+  <div id="stage">
+    <div id="flipbook-container">
+      <div id="flipbook"></div>
+    </div>
   </div>
 
   <div class="controls">
-    <button id="prev" title="Предыдущая">‹</button>
+    <button class="round" id="prev" title="Предыдущая">‹</button>
     <div id="page-info">1 / 24</div>
-    <button id="next" title="Следующая">›</button>
+    <button class="round" id="next" title="Следующая">›</button>
     <div class="sep"></div>
-    <button id="open-zoom" title="Увеличить страницу">🔍</button>
-    <button id="toggle-fs" title="На весь экран">⛶</button>
-  </div>
-
-  <div id="zoom-overlay" aria-hidden="true">
-    <div class="zoom-topbar">
-      <button id="zoom-close" title="Выйти из увеличения">✕ Выйти</button>
-      <div id="zoom-page-label">1 / 24</div>
-      <button id="zoom-fs" title="На весь экран">⛶</button>
-    </div>
-    <div id="zoom-viewport">
-      <img id="zoom-img" alt="Страница каталога" draggable="false">
-      <div class="zoom-hint">Колёсико / щипок — масштаб · перетаскивание — сдвиг · Esc — выход</div>
-    </div>
-    <div class="zoom-toolbar">
-      <button id="zoom-prev" title="Предыдущая">‹</button>
-      <button id="zoom-minus" title="Уменьшить">−</button>
-      <div id="zoom-scale-label">100%</div>
-      <button id="zoom-plus" title="Увеличить">+</button>
-      <button id="zoom-reset" title="Вписать в экран">⌂</button>
-      <button id="zoom-next" title="Следующая">›</button>
-    </div>
+    <button id="toggle-fs" title="На весь экран">⛶ На весь экран</button>
+    <button id="exit-fs" title="Выйти из полного экрана">✕ Выйти</button>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
@@ -354,6 +245,8 @@
     const pageInfo = document.getElementById('page-info');
     const prevBtn = document.getElementById('prev');
     const nextBtn = document.getElementById('next');
+    const book = document.getElementById('flipbook-container');
+    const stage = document.getElementById('stage');
 
     function catalogPageFromIndex(idx) {
       return Math.max(1, Math.min(idx, TOTAL_PAGES));
@@ -382,235 +275,111 @@
     setTimeout(updateUI, 400);
     window.addEventListener('resize', () => pageFlip.update());
 
-    const fsBtn = document.getElementById('toggle-fs');
-    const zoomFsBtn = document.getElementById('zoom-fs');
-
     function isFullscreen() {
       return !!(document.fullscreenElement || document.webkitFullscreenElement);
     }
 
-    function toggleFullscreen() {
+    function enterFullscreen() {
       const el = document.documentElement;
-      if (!isFullscreen()) {
-        const req = el.requestFullscreen || el.webkitRequestFullscreen;
-        if (req) req.call(el);
-      } else {
-        const exit = document.exitFullscreen || document.webkitExitFullscreen;
-        if (exit) exit.call(document);
-      }
+      const req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (req) req.call(el);
     }
 
-    fsBtn.addEventListener('click', toggleFullscreen);
-    zoomFsBtn.addEventListener('click', toggleFullscreen);
-
-    const overlay = document.getElementById('zoom-overlay');
-    const viewport = document.getElementById('zoom-viewport');
-    const img = document.getElementById('zoom-img');
-    const zoomPageLabel = document.getElementById('zoom-page-label');
-    const zoomScaleLabel = document.getElementById('zoom-scale-label');
-    const zoomPrev = document.getElementById('zoom-prev');
-    const zoomNext = document.getElementById('zoom-next');
-
-    const zoom = {
-      open: false,
-      page: 1,
-      scale: 1,
-      minScale: 0.2,
-      maxScale: 5,
-      tx: 0,
-      ty: 0,
-      fitScale: 1,
-      dragging: false,
-      lastX: 0,
-      lastY: 0,
-      pointers: new Map()
-    };
-
-    function pageSrc(n) {
-      return 'page-' + String(n).padStart(2, '0') + '.png';
+    function exitFullscreen() {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exit) exit.call(document);
     }
 
-    function applyTransform() {
-      img.style.transform = 'translate(-50%, -50%) translate(' + zoom.tx + 'px, ' + zoom.ty + 'px) scale(' + zoom.scale + ')';
-      const pct = Math.round((zoom.scale / zoom.fitScale) * 100);
-      zoomScaleLabel.textContent = pct + '%';
+    document.getElementById('toggle-fs').addEventListener('click', enterFullscreen);
+    document.getElementById('exit-fs').addEventListener('click', exitFullscreen);
+
+    const view = { scale: 1, tx: 0, ty: 0, min: 1, max: 4 };
+
+    function applyView() {
+      book.style.transform = 'translate(' + view.tx + 'px, ' + view.ty + 'px) scale(' + view.scale + ')';
     }
 
-    function computeFitScale() {
-      const vw = viewport.clientWidth;
-      const vh = viewport.clientHeight;
-      const nw = img.naturalWidth || 1400;
-      const nh = img.naturalHeight || 1980;
-      const pad = 24;
-      return Math.min((vw - pad) / nw, (vh - pad) / nh);
+    function resetView() {
+      view.scale = 1;
+      view.tx = 0;
+      view.ty = 0;
+      applyView();
     }
 
-    function fitToScreen() {
-      zoom.fitScale = computeFitScale();
-      zoom.minScale = zoom.fitScale * 0.6;
-      zoom.scale = zoom.fitScale;
-      zoom.tx = 0;
-      zoom.ty = 0;
-      applyTransform();
+    function onFsChange() {
+      const on = isFullscreen();
+      document.body.classList.toggle('is-fs', on);
+      if (!on) resetView();
+      setTimeout(() => pageFlip.update(), 80);
     }
 
-    function setScaleAround(newScale, cx, cy) {
-      const rect = viewport.getBoundingClientRect();
-      const px = cx - rect.left - rect.width / 2;
-      const py = cy - rect.top - rect.height / 2;
-      const clamped = Math.min(zoom.maxScale, Math.max(zoom.minScale, newScale));
-      const k = clamped / zoom.scale;
-      zoom.tx = px - (px - zoom.tx) * k;
-      zoom.ty = py - (py - zoom.ty) * k;
-      zoom.scale = clamped;
-      applyTransform();
-    }
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
 
-    function loadZoomPage(n) {
-      zoom.page = Math.max(1, Math.min(TOTAL_PAGES, n));
-      zoomPageLabel.textContent = zoom.page + ' / ' + TOTAL_PAGES;
-      zoomPrev.disabled = zoom.page <= 1;
-      zoomNext.disabled = zoom.page >= TOTAL_PAGES;
-      img.onload = () => fitToScreen();
-      img.src = pageSrc(zoom.page);
-    }
-
-    function openZoom(pageNum) {
-      const idx = pageFlip.getCurrentPageIndex();
-      const n = pageNum || catalogPageFromIndex(idx);
-      overlay.classList.add('open');
-      overlay.setAttribute('aria-hidden', 'false');
-      zoom.open = true;
-      loadZoomPage(n);
-    }
-
-    function closeZoom() {
-      overlay.classList.remove('open');
-      overlay.setAttribute('aria-hidden', 'true');
-      zoom.open = false;
-      zoom.dragging = false;
-      zoom.pointers.clear();
-      if (pageFlip.getCurrentPageIndex() !== zoom.page) {
-        try { pageFlip.flip(zoom.page); } catch (e) {}
-      }
-    }
-
-    document.getElementById('open-zoom').addEventListener('click', () => openZoom());
-    document.getElementById('zoom-close').addEventListener('click', closeZoom);
-    document.getElementById('zoom-plus').addEventListener('click', () => {
-      const rect = viewport.getBoundingClientRect();
-      setScaleAround(zoom.scale * 1.25, rect.left + rect.width / 2, rect.top + rect.height / 2);
-    });
-    document.getElementById('zoom-minus').addEventListener('click', () => {
-      const rect = viewport.getBoundingClientRect();
-      setScaleAround(zoom.scale / 1.25, rect.left + rect.width / 2, rect.top + rect.height / 2);
-    });
-    document.getElementById('zoom-reset').addEventListener('click', fitToScreen);
-    zoomPrev.addEventListener('click', () => loadZoomPage(zoom.page - 1));
-    zoomNext.addEventListener('click', () => loadZoomPage(zoom.page + 1));
-
-    viewport.addEventListener('wheel', (e) => {
-      if (!zoom.open) return;
+    stage.addEventListener('wheel', (e) => {
+      if (!isFullscreen()) return;
       e.preventDefault();
+
       const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-      setScaleAround(zoom.scale * factor, e.clientX, e.clientY);
-    }, { passive: false });
-
-    viewport.addEventListener('pointerdown', (e) => {
-      viewport.setPointerCapture(e.pointerId);
-      zoom.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (zoom.pointers.size === 1) {
-        zoom.dragging = true;
-        zoom.lastX = e.clientX;
-        zoom.lastY = e.clientY;
-        viewport.classList.add('dragging');
-      }
-    });
-
-    viewport.addEventListener('pointermove', (e) => {
-      if (!zoom.pointers.has(e.pointerId)) return;
-      zoom.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-      if (zoom.pointers.size === 2) {
-        const pts = Array.from(zoom.pointers.values());
-        const dist = function(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); };
-        if (!zoom._pinchDist) {
-          zoom._pinchDist = dist(pts[0], pts[1]);
-          zoom._pinchScale = zoom.scale;
-          return;
-        }
-        const d = dist(pts[0], pts[1]);
-        const midX = (pts[0].x + pts[1].x) / 2;
-        const midY = (pts[0].y + pts[1].y) / 2;
-        setScaleAround(zoom._pinchScale * (d / zoom._pinchDist), midX, midY);
+      const next = Math.min(view.max, Math.max(view.min, view.scale * factor));
+      if (next === view.scale) {
+        if (next === view.min) { view.tx = 0; view.ty = 0; applyView(); }
         return;
       }
 
-      if (zoom.dragging && zoom.pointers.size === 1) {
-        zoom.tx += e.clientX - zoom.lastX;
-        zoom.ty += e.clientY - zoom.lastY;
-        zoom.lastX = e.clientX;
-        zoom.lastY = e.clientY;
-        applyTransform();
+      const rect = stage.getBoundingClientRect();
+      const cx = e.clientX - rect.left - rect.width / 2;
+      const cy = e.clientY - rect.top - rect.height / 2;
+      const k = next / view.scale;
+      view.tx = cx - (cx - view.tx) * k;
+      view.ty = cy - (cy - view.ty) * k;
+      view.scale = next;
+
+      if (view.scale === view.min) {
+        view.tx = 0;
+        view.ty = 0;
       }
+
+      applyView();
+    }, { passive: false });
+
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    stage.addEventListener('pointerdown', (e) => {
+      if (!isFullscreen() || view.scale <= 1) return;
+      if (e.target.closest('.controls')) return;
+      dragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      stage.setPointerCapture(e.pointerId);
     });
 
-    function endPointer(e) {
-      zoom.pointers.delete(e.pointerId);
-      if (zoom.pointers.size < 2) zoom._pinchDist = null;
-      if (zoom.pointers.size === 0) {
-        zoom.dragging = false;
-        viewport.classList.remove('dragging');
-      }
-    }
-
-    viewport.addEventListener('pointerup', endPointer);
-    viewport.addEventListener('pointercancel', endPointer);
-
-    viewport.addEventListener('dblclick', (e) => {
-      if (zoom.scale > zoom.fitScale * 1.05) fitToScreen();
-      else setScaleAround(zoom.fitScale * 2.2, e.clientX, e.clientY);
+    stage.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      view.tx += e.clientX - lastX;
+      view.ty += e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      applyView();
     });
 
-    window.addEventListener('resize', () => {
-      if (zoom.open) {
-        const oldFit = zoom.fitScale;
-        zoom.fitScale = computeFitScale();
-        zoom.minScale = zoom.fitScale * 0.6;
-        if (Math.abs(zoom.scale - oldFit) < 0.02) fitToScreen();
-        else applyTransform();
-      }
-    });
+    function endDrag() { dragging = false; }
+    stage.addEventListener('pointerup', endDrag);
+    stage.addEventListener('pointercancel', endDrag);
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        if (zoom.open) { closeZoom(); return; }
-        if (isFullscreen()) {
-          const exit = document.exitFullscreen || document.webkitExitFullscreen;
-          if (exit) exit.call(document);
-        }
+        if (isFullscreen()) exitFullscreen();
         return;
       }
-
-      if (zoom.open) {
-        if (e.key === 'ArrowLeft') loadZoomPage(zoom.page - 1);
-        if (e.key === 'ArrowRight') loadZoomPage(zoom.page + 1);
-        if (e.key === '+' || e.key === '=') {
-          const rect = viewport.getBoundingClientRect();
-          setScaleAround(zoom.scale * 1.25, rect.left + rect.width / 2, rect.top + rect.height / 2);
-        }
-        if (e.key === '-' || e.key === '_') {
-          const rect = viewport.getBoundingClientRect();
-          setScaleAround(zoom.scale / 1.25, rect.left + rect.width / 2, rect.top + rect.height / 2);
-        }
-        if (e.key === '0') fitToScreen();
-        return;
-      }
-
       if (e.key === 'ArrowLeft') pageFlip.flipPrev();
       if (e.key === 'ArrowRight') pageFlip.flipNext();
-      if (e.key === 'f' || e.key === 'F' || e.key === 'а' || e.key === 'А') toggleFullscreen();
-      if (e.key === 'z' || e.key === 'Z' || e.key === 'я' || e.key === 'Я') openZoom();
+      if (e.key === 'f' || e.key === 'F' || e.key === 'а' || e.key === 'А') {
+        if (isFullscreen()) exitFullscreen();
+        else enterFullscreen();
+      }
     });
   </script>
 </body>
