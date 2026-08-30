@@ -24,14 +24,16 @@
     }
 
     #flipbook-container {
+      position: absolute;
+      left: 50%;
+      top: 50%;
       width: 100%;
       height: 100%;
       display: flex;
       justify-content: center;
       align-items: center;
       background: #000 !important;
-      transform-origin: center center;
-      will-change: transform;
+      transform: translate(-50%, -50%);
     }
 
     #flipbook {
@@ -55,6 +57,10 @@
     .stf__item.--right {
       background: #000 !important;
       background-color: #000 !important;
+    }
+
+    canvas.stf__canvas {
+      image-rendering: auto;
     }
 
     .controls {
@@ -184,7 +190,9 @@
   <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
 
   <script>
-    const PAGE_ASPECT = 1400 / 1980;
+    const PAGE_W = 1400;
+    const PAGE_H = 1980;
+    const PAGE_ASPECT = PAGE_W / PAGE_H;
     const TOTAL_PAGES = 24;
 
     const pages = [];
@@ -193,17 +201,14 @@
       pages.push('page-' + String(i).padStart(2, '0') + '.png');
     }
 
-    const baseWidth = 700;
-    const baseHeight = Math.round(baseWidth / PAGE_ASPECT);
-
     const pageFlip = new St.PageFlip(document.getElementById('flipbook'), {
-      width: baseWidth,
-      height: baseHeight,
+      width: PAGE_W,
+      height: PAGE_H,
       size: 'stretch',
       minWidth: 280,
-      maxWidth: 1100,
-      minHeight: 400,
-      maxHeight: 1600,
+      maxWidth: PAGE_W * 2,
+      minHeight: 360,
+      maxHeight: PAGE_H,
       drawShadow: true,
       flippingTime: 800,
       usePortrait: true,
@@ -221,24 +226,52 @@
 
     pageFlip.loadFromImages(pages);
 
-    const patchCanvasClear = () => {
-      try {
-        if (pageFlip.render && typeof pageFlip.render.clear === 'function' && pageFlip.render.ctx) {
-          pageFlip.render.clear = function () {
-            this.ctx.fillStyle = '#000000';
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-          };
-          pageFlip.render.clear();
-          if (typeof pageFlip.update === 'function') pageFlip.update();
-          return true;
-        }
-      } catch (e) {}
-      return false;
-    };
+    function getDpr() {
+      return Math.min(window.devicePixelRatio || 1, 2);
+    }
 
-    if (!patchCanvasClear()) {
+    function patchQuality() {
+      try {
+        const ui = pageFlip.getUI && pageFlip.getUI();
+        if (!ui || !ui.canvas) return false;
+
+        ui.resizeCanvas = function () {
+          const style = getComputedStyle(this.canvas);
+          const cssW = Math.max(1, Math.round(parseFloat(style.width)));
+          const cssH = Math.max(1, Math.round(parseFloat(style.height)));
+          const dpr = getDpr();
+          if (this.canvas.width !== Math.round(cssW * dpr) || this.canvas.height !== Math.round(cssH * dpr)) {
+            this.canvas.width = Math.round(cssW * dpr);
+            this.canvas.height = Math.round(cssH * dpr);
+          }
+          const ctx = this.canvas.getContext('2d');
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+        };
+
+        if (pageFlip.render) {
+          pageFlip.render.clear = function () {
+            const ctx = this.ctx;
+            ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            ctx.restore();
+          };
+        }
+
+        ui.resizeCanvas();
+        if (typeof pageFlip.update === 'function') pageFlip.update();
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    if (!patchQuality()) {
       setTimeout(() => {
-        if (!patchCanvasClear()) setTimeout(patchCanvasClear, 400);
+        if (!patchQuality()) setTimeout(patchQuality, 400);
       }, 150);
     }
 
@@ -273,7 +306,6 @@
     }, 5000);
 
     setTimeout(updateUI, 400);
-    window.addEventListener('resize', () => pageFlip.update());
 
     function isFullscreen() {
       return !!(document.fullscreenElement || document.webkitFullscreenElement);
@@ -293,10 +325,24 @@
     document.getElementById('toggle-fs').addEventListener('click', enterFullscreen);
     document.getElementById('exit-fs').addEventListener('click', exitFullscreen);
 
-    const view = { scale: 1, tx: 0, ty: 0, min: 1, max: 4 };
+    const view = { scale: 1, tx: 0, ty: 0, min: 1, max: 2.5 };
+    let updateRaf = 0;
+
+    function scheduleBookUpdate() {
+      if (updateRaf) return;
+      updateRaf = requestAnimationFrame(() => {
+        updateRaf = 0;
+        pageFlip.update();
+      });
+    }
 
     function applyView() {
-      book.style.transform = 'translate(' + view.tx + 'px, ' + view.ty + 'px) scale(' + view.scale + ')';
+      const vw = stage.clientWidth;
+      const vh = stage.clientHeight;
+      book.style.width = (vw * view.scale) + 'px';
+      book.style.height = (vh * view.scale) + 'px';
+      book.style.transform = 'translate(-50%, -50%) translate(' + view.tx + 'px, ' + view.ty + 'px)';
+      scheduleBookUpdate();
     }
 
     function resetView() {
@@ -309,20 +355,23 @@
     function onFsChange() {
       const on = isFullscreen();
       document.body.classList.toggle('is-fs', on);
-      if (!on) resetView();
-      setTimeout(() => pageFlip.update(), 80);
+      resetView();
     }
 
     document.addEventListener('fullscreenchange', onFsChange);
     document.addEventListener('webkitfullscreenchange', onFsChange);
 
+    window.addEventListener('resize', () => {
+      applyView();
+    });
+
     stage.addEventListener('wheel', (e) => {
       if (!isFullscreen()) return;
       e.preventDefault();
 
-      const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+      const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
       const next = Math.min(view.max, Math.max(view.min, view.scale * factor));
-      if (next === view.scale) {
+      if (Math.abs(next - view.scale) < 0.001) {
         if (next === view.min) { view.tx = 0; view.ty = 0; applyView(); }
         return;
       }
@@ -335,7 +384,8 @@
       view.ty = cy - (cy - view.ty) * k;
       view.scale = next;
 
-      if (view.scale === view.min) {
+      if (view.scale <= view.min + 0.001) {
+        view.scale = 1;
         view.tx = 0;
         view.ty = 0;
       }
@@ -362,7 +412,7 @@
       view.ty += e.clientY - lastY;
       lastX = e.clientX;
       lastY = e.clientY;
-      applyView();
+      book.style.transform = 'translate(-50%, -50%) translate(' + view.tx + 'px, ' + view.ty + 'px)';
     });
 
     function endDrag() { dragging = false; }
