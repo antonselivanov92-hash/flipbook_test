@@ -27,18 +27,17 @@
       position: absolute;
       left: 50%;
       top: 50%;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      width: 1400px;
+      height: 1980px;
+      margin: 0;
       background: #000 !important;
       transform: translate(-50%, -50%);
+      transform-origin: center center;
     }
 
     #flipbook {
-      width: 100%;
-      height: 100%;
+      width: 1400px;
+      height: 1980px;
       background: #000 !important;
     }
 
@@ -57,10 +56,6 @@
     .stf__item.--right {
       background: #000 !important;
       background-color: #000 !important;
-    }
-
-    canvas.stf__canvas {
-      image-rendering: auto;
     }
 
     .controls {
@@ -170,7 +165,7 @@
 </head>
 <body>
 
-  <div class="hint" id="hint">Листайте ← → · ⛶ — на весь экран · в полном экране колёсико увеличивает и уменьшает</div>
+  <div class="hint" id="hint">Листайте ← → · ⛶ — страница 1400×1980 · колёсико только в полном экране</div>
 
   <div id="stage">
     <div id="flipbook-container">
@@ -192,7 +187,6 @@
   <script>
     const PAGE_W = 1400;
     const PAGE_H = 1980;
-    const PAGE_ASPECT = PAGE_W / PAGE_H;
     const TOTAL_PAGES = 24;
 
     const pages = [];
@@ -204,16 +198,16 @@
     const pageFlip = new St.PageFlip(document.getElementById('flipbook'), {
       width: PAGE_W,
       height: PAGE_H,
-      size: 'stretch',
-      minWidth: 280,
-      maxWidth: PAGE_W * 2,
-      minHeight: 360,
+      size: 'fixed',
+      minWidth: PAGE_W,
+      maxWidth: PAGE_W,
+      minHeight: PAGE_H,
       maxHeight: PAGE_H,
       drawShadow: true,
       flippingTime: 800,
       usePortrait: true,
       startPage: 0,
-      autoSize: true,
+      autoSize: false,
       maxShadowOpacity: 0.35,
       showCover: false,
       mobileScrollSupport: true,
@@ -236,14 +230,11 @@
         if (!ui || !ui.canvas) return false;
 
         ui.resizeCanvas = function () {
-          const style = getComputedStyle(this.canvas);
-          const cssW = Math.max(1, Math.round(parseFloat(style.width)));
-          const cssH = Math.max(1, Math.round(parseFloat(style.height)));
           const dpr = getDpr();
-          if (this.canvas.width !== Math.round(cssW * dpr) || this.canvas.height !== Math.round(cssH * dpr)) {
-            this.canvas.width = Math.round(cssW * dpr);
-            this.canvas.height = Math.round(cssH * dpr);
-          }
+          this.canvas.style.width = PAGE_W + 'px';
+          this.canvas.style.height = PAGE_H + 'px';
+          this.canvas.width = Math.round(PAGE_W * dpr);
+          this.canvas.height = Math.round(PAGE_H * dpr);
           const ctx = this.canvas.getContext('2d');
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
           ctx.imageSmoothingEnabled = true;
@@ -325,27 +316,29 @@
     document.getElementById('toggle-fs').addEventListener('click', enterFullscreen);
     document.getElementById('exit-fs').addEventListener('click', exitFullscreen);
 
-    const view = { scale: 1, tx: 0, ty: 0, min: 1, max: 2.5 };
-    let updateRaf = 0;
+    const view = { scale: 1, tx: 0, ty: 0 };
 
-    function scheduleBookUpdate() {
-      if (updateRaf) return;
-      updateRaf = requestAnimationFrame(() => {
-        updateRaf = 0;
-        pageFlip.update();
-      });
+    function fitScale() {
+      const vw = stage.clientWidth;
+      const vh = stage.clientHeight;
+      const padX = 32;
+      const padY = 96;
+      return Math.min((vw - padX) / PAGE_W, (vh - padY) / PAGE_H);
     }
 
     function applyView() {
-      const vw = stage.clientWidth;
-      const vh = stage.clientHeight;
-      book.style.width = (vw * view.scale) + 'px';
-      book.style.height = (vh * view.scale) + 'px';
-      book.style.transform = 'translate(-50%, -50%) translate(' + view.tx + 'px, ' + view.ty + 'px)';
-      scheduleBookUpdate();
+      book.style.transform =
+        'translate(-50%, -50%) translate(' + view.tx + 'px, ' + view.ty + 'px) scale(' + view.scale + ')';
     }
 
-    function resetView() {
+    function setWindowedFit() {
+      view.scale = fitScale();
+      view.tx = 0;
+      view.ty = 0;
+      applyView();
+    }
+
+    function setFullscreenNative() {
       view.scale = 1;
       view.tx = 0;
       view.ty = 0;
@@ -355,26 +348,29 @@
     function onFsChange() {
       const on = isFullscreen();
       document.body.classList.toggle('is-fs', on);
-      resetView();
+      if (on) setFullscreenNative();
+      else setWindowedFit();
     }
 
     document.addEventListener('fullscreenchange', onFsChange);
     document.addEventListener('webkitfullscreenchange', onFsChange);
 
     window.addEventListener('resize', () => {
-      applyView();
+      if (isFullscreen()) applyView();
+      else setWindowedFit();
     });
+
+    setWindowedFit();
 
     stage.addEventListener('wheel', (e) => {
       if (!isFullscreen()) return;
       e.preventDefault();
 
-      const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
-      const next = Math.min(view.max, Math.max(view.min, view.scale * factor));
-      if (Math.abs(next - view.scale) < 0.001) {
-        if (next === view.min) { view.tx = 0; view.ty = 0; applyView(); }
-        return;
-      }
+      const min = 0.4;
+      const max = 1;
+      const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08;
+      const next = Math.min(max, Math.max(min, view.scale * factor));
+      if (Math.abs(next - view.scale) < 0.001) return;
 
       const rect = stage.getBoundingClientRect();
       const cx = e.clientX - rect.left - rect.width / 2;
@@ -383,13 +379,6 @@
       view.tx = cx - (cx - view.tx) * k;
       view.ty = cy - (cy - view.ty) * k;
       view.scale = next;
-
-      if (view.scale <= view.min + 0.001) {
-        view.scale = 1;
-        view.tx = 0;
-        view.ty = 0;
-      }
-
       applyView();
     }, { passive: false });
 
@@ -398,7 +387,7 @@
     let lastY = 0;
 
     stage.addEventListener('pointerdown', (e) => {
-      if (!isFullscreen() || view.scale <= 1) return;
+      if (!isFullscreen()) return;
       if (e.target.closest('.controls')) return;
       dragging = true;
       lastX = e.clientX;
@@ -412,7 +401,7 @@
       view.ty += e.clientY - lastY;
       lastX = e.clientX;
       lastY = e.clientY;
-      book.style.transform = 'translate(-50%, -50%) translate(' + view.tx + 'px, ' + view.ty + 'px)';
+      applyView();
     });
 
     function endDrag() { dragging = false; }
